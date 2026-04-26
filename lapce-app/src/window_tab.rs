@@ -626,6 +626,16 @@ impl WindowTabData {
             });
         }
 
+        {
+            let proxy = window_tab_data.common.proxy.clone();
+            let active_worktree = window_tab_data.terminal.active_worktree_path;
+            cx.create_effect(move |_| {
+                if let Some(path) = active_worktree.get() {
+                    proxy.refresh_diff(path);
+                }
+            });
+        }
+
         window_tab_data
     }
 

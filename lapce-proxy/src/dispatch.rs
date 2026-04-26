@@ -400,6 +400,14 @@ impl ProxyHandler for Dispatcher {
                     }
                 }
             }
+            RefreshDiff { path } => {
+                let core_rpc = self.core_rpc.clone();
+                std::thread::spawn(move || {
+                    if let Some(diff) = git_diff_new(&path) {
+                        core_rpc.diff_info(diff);
+                    }
+                });
+            }
             LspCancel { id } => {
                 self.catalog_rpc.send_notification(
                     None,

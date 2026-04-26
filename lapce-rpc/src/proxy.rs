@@ -301,6 +301,9 @@ pub enum ProxyNotification {
     GitRemoveWorktree {
         name: String,
     },
+    RefreshDiff {
+        path: PathBuf,
+    },
     LspCancel {
         id: i32,
     },
@@ -638,6 +641,10 @@ impl ProxyRpcHandler {
 
     pub fn git_remove_worktree(&self, name: String) {
         self.notification(ProxyNotification::GitRemoveWorktree { name });
+    }
+
+    pub fn refresh_diff(&self, path: PathBuf) {
+        self.notification(ProxyNotification::RefreshDiff { path });
     }
 
     pub fn install_volt(&self, volt: VoltInfo) {

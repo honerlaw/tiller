@@ -39,6 +39,8 @@ pub struct TerminalPanelData {
     pub tab_info: RwSignal<TerminalTabInfo>,
     pub debug: RunDebugData,
     pub breakline: Memo<Option<(usize, PathBuf)>>,
+    /// Reactively tracks the worktree path of the active terminal tab (None if not bound to a worktree).
+    pub active_worktree_path: Memo<Option<PathBuf>>,
     pub common: Rc<CommonData>,
     pub main_split: MainSplitData,
 }
@@ -104,12 +106,22 @@ impl TerminalPanelData {
             })
         };
 
+        let active_worktree_path = cx.create_memo(move |_| {
+            tab_info.with(|info| {
+                info.tabs
+                    .get(info.active)
+                    .or_else(|| info.tabs.last())
+                    .and_then(|(_, tab)| tab.worktree_path.clone())
+            })
+        });
+
         Self {
             cx,
             workspace,
             tab_info,
             debug,
             breakline,
+            active_worktree_path,
             common,
             main_split,
         }
