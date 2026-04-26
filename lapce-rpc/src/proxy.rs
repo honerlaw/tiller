@@ -304,6 +304,9 @@ pub enum ProxyNotification {
     RefreshDiff {
         path: PathBuf,
     },
+    ChangeWorkspace {
+        path: PathBuf,
+    },
     LspCancel {
         id: i32,
     },
@@ -645,6 +648,10 @@ impl ProxyRpcHandler {
 
     pub fn refresh_diff(&self, path: PathBuf) {
         self.notification(ProxyNotification::RefreshDiff { path });
+    }
+
+    pub fn change_workspace(&self, path: PathBuf) {
+        self.notification(ProxyNotification::ChangeWorkspace { path });
     }
 
     pub fn install_volt(&self, volt: VoltInfo) {

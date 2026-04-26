@@ -630,13 +630,21 @@ impl WindowTabData {
             let proxy = window_tab_data.common.proxy.clone();
             let file_explorer = window_tab_data.file_explorer.clone();
             let active_worktree = window_tab_data.terminal.active_worktree_path;
+            let main_split = window_tab_data.main_split.clone();
+            let global_search = window_tab_data.global_search.clone();
             cx.create_effect(move |_| {
                 if let Some(path) = active_worktree.get() {
-                    proxy.refresh_diff(path.clone());
+                    main_split.diagnostics.update(|d| {
+                        d.retain(|p, _| p.starts_with(&path));
+                    });
+                    global_search.search_result.update(|r| {
+                        r.retain(|p, _| p.starts_with(&path));
+                    });
                     let current = file_explorer.root.with_untracked(|r| r.path.clone());
                     if current != path {
-                        file_explorer.set_root(path);
+                        file_explorer.set_root(path.clone());
                     }
+                    proxy.change_workspace(path);
                 }
             });
         }

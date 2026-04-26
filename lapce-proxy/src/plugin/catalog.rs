@@ -18,9 +18,11 @@ use lapce_rpc::{
 };
 use lapce_xi_rope::{Rope, RopeDelta};
 use lsp_types::{
-    DidOpenTextDocumentParams, MessageType, SemanticTokens, ShowMessageParams,
-    TextDocumentIdentifier, TextDocumentItem, VersionedTextDocumentIdentifier,
-    notification::DidOpenTextDocument, request::Request,
+    DidChangeWorkspaceFoldersParams, DidOpenTextDocumentParams, MessageType,
+    SemanticTokens, ShowMessageParams, TextDocumentIdentifier, TextDocumentItem,
+    VersionedTextDocumentIdentifier, WorkspaceFolder, WorkspaceFoldersChangeEvent,
+    notification::{DidChangeWorkspaceFolders, DidOpenTextDocument},
+    request::Request,
 };
 use parking_lot::Mutex;
 use psp_types::Notification;
@@ -571,6 +573,36 @@ impl PluginCatalog {
             UpdatePluginConfigs(configs) => {
                 tracing::debug!("UpdatePluginConfigs {:?}", configs);
                 self.plugin_configurations = configs;
+            }
+            ChangeWorkspace { path } => {
+                self.workspace = Some(path.clone());
+                let uri = match lsp_types::Url::from_file_path(&path) {
+                    Ok(u) => u,
+                    Err(_) => return,
+                };
+                let folder = WorkspaceFolder {
+                    name: path
+                        .file_name()
+                        .unwrap_or_default()
+                        .to_string_lossy()
+                        .into_owned(),
+                    uri,
+                };
+                let params = DidChangeWorkspaceFoldersParams {
+                    event: WorkspaceFoldersChangeEvent {
+                        added: vec![folder.clone()],
+                        removed: vec![folder],
+                    },
+                };
+                for (_, plugin) in self.plugins.iter() {
+                    plugin.server_notification(
+                        DidChangeWorkspaceFolders::METHOD,
+                        params.clone(),
+                        None,
+                        None,
+                        false,
+                    );
+                }
             }
             PluginServerLoaded(plugin) => {
                 // TODO: check if the server has did open registered

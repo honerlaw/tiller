@@ -155,6 +155,9 @@ pub enum PluginCatalogRpc {
 #[allow(clippy::large_enum_variant)]
 pub enum PluginCatalogNotification {
     UpdatePluginConfigs(HashMap<String, HashMap<String, serde_json::Value>>),
+    ChangeWorkspace {
+        path: std::path::PathBuf,
+    },
     UnactivatedVolts(Vec<VoltMetadata>),
     PluginServerLoaded(PluginServerRpcHandler),
     InstallVolt(VoltInfo),
@@ -1324,6 +1327,10 @@ impl PluginCatalogRpcHandler {
         self.catalog_notification(PluginCatalogNotification::UpdatePluginConfigs(
             configs,
         ))
+    }
+
+    pub fn change_workspace(&self, path: std::path::PathBuf) {
+        let _ = self.catalog_notification(PluginCatalogNotification::ChangeWorkspace { path });
     }
 
     pub fn install_volt(&self, volt: VoltInfo) -> Result<()> {

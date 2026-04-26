@@ -54,6 +54,7 @@ const WORKSPACE_EVENT_TOKEN: WatchToken = WatchToken(2);
 
 pub struct Dispatcher {
     workspace: Option<PathBuf>,
+    workspace_notifier: Arc<Mutex<Option<PathBuf>>>,
     pub proxy_rpc: ProxyRpcHandler,
     core_rpc: CoreRpcHandler,
     catalog_rpc: PluginCatalogRpcHandler,
@@ -79,8 +80,9 @@ impl ProxyHandler for Dispatcher {
                 self.window_id = window_id;
                 self.tab_id = tab_id;
                 self.workspace = workspace;
+                *self.workspace_notifier.lock() = self.workspace.clone();
                 self.file_watcher.notify(FileWatchNotifier::new(
-                    self.workspace.clone(),
+                    self.workspace_notifier.clone(),
                     self.core_rpc.clone(),
                     self.proxy_rpc.clone(),
                 ));
@@ -429,6 +431,21 @@ impl ProxyHandler for Dispatcher {
                 }
             }
             RefreshDiff { path } => {
+                let core_rpc = self.core_rpc.clone();
+                std::thread::spawn(move || {
+                    if let Some(diff) = git_diff_new(&path) {
+                        core_rpc.diff_info(diff);
+                    }
+                });
+            }
+            ChangeWorkspace { path } => {
+                if let Some(old) = self.workspace.take() {
+                    self.file_watcher.unwatch(&old, WORKSPACE_EVENT_TOKEN);
+                }
+                *self.workspace_notifier.lock() = Some(path.clone());
+                self.file_watcher.watch(&path, true, WORKSPACE_EVENT_TOKEN);
+                self.workspace = Some(path.clone());
+                self.catalog_rpc.change_workspace(path.clone());
                 let core_rpc = self.core_rpc.clone();
                 std::thread::spawn(move || {
                     if let Some(diff) = git_diff_new(&path) {
@@ -1278,6 +1295,7 @@ impl Dispatcher {
 
         Self {
             workspace: None,
+            workspace_notifier: Arc::new(Mutex::new(None)),
             proxy_rpc,
             core_rpc,
             catalog_rpc: plugin_rpc,
@@ -1303,7 +1321,7 @@ impl Dispatcher {
 struct FileWatchNotifier {
     core_rpc: CoreRpcHandler,
     proxy_rpc: ProxyRpcHandler,
-    workspace: Option<PathBuf>,
+    workspace: Arc<Mutex<Option<PathBuf>>>,
     workspace_fs_change_handler: Arc<Mutex<Option<Sender<bool>>>>,
     last_diff: Arc<Mutex<DiffInfo>>,
 }
@@ -1316,7 +1334,7 @@ impl Notify for FileWatchNotifier {
 
 impl FileWatchNotifier {
     fn new(
-        workspace: Option<PathBuf>,
+        workspace: Arc<Mutex<Option<PathBuf>>>,
         core_rpc: CoreRpcHandler,
         proxy_rpc: ProxyRpcHandler,
     ) -> Self {
@@ -1328,7 +1346,7 @@ impl FileWatchNotifier {
             last_diff: Arc::new(Mutex::new(DiffInfo::default())),
         };
 
-        if let Some(workspace) = notifier.workspace.clone() {
+        if let Some(workspace) = notifier.workspace.lock().clone() {
             let core_rpc = notifier.core_rpc.clone();
             let last_diff = notifier.last_diff.clone();
             thread::spawn(move || {
@@ -1401,7 +1419,7 @@ impl FileWatchNotifier {
 
         let local_handler = self.workspace_fs_change_handler.clone();
         let core_rpc = self.core_rpc.clone();
-        let workspace = self.workspace.clone().unwrap();
+        let workspace_arc = self.workspace.clone();
         let last_diff = self.last_diff.clone();
         thread::spawn(move || {
             thread::sleep(Duration::from_millis(500));
@@ -1420,11 +1438,13 @@ impl FileWatchNotifier {
             if explorer_change {
                 core_rpc.workspace_file_change();
             }
-            if let Some(diff) = git_diff_new(&workspace) {
-                let mut last_diff = last_diff.lock();
-                if diff != *last_diff {
-                    core_rpc.diff_info(diff.clone());
-                    *last_diff = diff;
+            if let Some(workspace) = workspace_arc.lock().clone() {
+                if let Some(diff) = git_diff_new(&workspace) {
+                    let mut last_diff = last_diff.lock();
+                    if diff != *last_diff {
+                        core_rpc.diff_info(diff.clone());
+                        *last_diff = diff;
+                    }
                 }
             }
         });
