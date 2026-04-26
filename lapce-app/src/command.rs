@@ -450,10 +450,6 @@ pub enum LapceWorkbenchCommand {
     #[strum(serialize = "toggle_source_control_focus")]
     ToggleSourceControlFocus,
 
-    #[strum(message = "Toggle Plugin Focus")]
-    #[strum(serialize = "toggle_plugin_focus")]
-    TogglePluginFocus,
-
     #[strum(message = "Toggle File Explorer Focus")]
     #[strum(serialize = "toggle_file_explorer_focus")]
     ToggleFileExplorerFocus,
@@ -472,9 +468,6 @@ pub enum LapceWorkbenchCommand {
 
     #[strum(serialize = "toggle_source_control_visual")]
     ToggleSourceControlVisual,
-
-    #[strum(serialize = "toggle_plugin_visual")]
-    TogglePluginVisual,
 
     #[strum(serialize = "toggle_file_explorer_visual")]
     ToggleFileExplorerVisual,

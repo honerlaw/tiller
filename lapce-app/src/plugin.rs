@@ -41,10 +41,11 @@ use crate::{
     keypress::{KeyPressFocus, condition::Condition},
     main_split::Editors,
     markdown::{MarkdownContent, parse_markdown},
-    panel::plugin_view::VOLT_DEFAULT_PNG,
     web_link::web_link,
     window_tab::CommonData,
 };
+
+const VOLT_DEFAULT_PNG: &[u8] = include_bytes!("../../extra/images/volt.png");
 
 type PluginInfo = Option<(
     Option<VoltMetadata>,
