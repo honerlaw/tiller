@@ -4,6 +4,7 @@ pub mod buffer;
 pub mod cli;
 pub mod dispatch;
 pub mod plugin;
+pub mod server_manager;
 pub mod terminal;
 pub mod watcher;
 

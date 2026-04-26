@@ -89,6 +89,34 @@ impl ProxyHandler for Dispatcher {
                         .watch(workspace, true, WORKSPACE_EVENT_TOKEN);
                 }
 
+                // Download language server binaries in the background and inject their
+                // paths into plugin configurations once ready.
+                let catalog_for_servers = self.catalog_rpc.clone();
+                let base_configs = plugin_configurations.clone();
+                thread::spawn(move || {
+                    let server_configs =
+                        crate::server_manager::ensure_servers(&base_configs);
+                    if !server_configs.is_empty() {
+                        // Merge: start from the user's configs, add our paths for any
+                        // key the user hasn't already set.
+                        let mut merged = base_configs;
+                        for (plugin, entries) in server_configs {
+                            let plugin_map = merged.entry(plugin).or_default();
+                            for (k, v) in entries {
+                                plugin_map.entry(k).or_insert(v);
+                            }
+                        }
+                        if let Err(e) =
+                            catalog_for_servers.update_plugin_configs(merged)
+                        {
+                            tracing::warn!(
+                                "Failed to push server configs to catalog: {:?}",
+                                e
+                            );
+                        }
+                    }
+                });
+
                 let plugin_rpc = self.catalog_rpc.clone();
                 let workspace = self.workspace.clone();
                 thread::spawn(move || {

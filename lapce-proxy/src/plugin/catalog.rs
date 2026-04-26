@@ -26,6 +26,8 @@ use parking_lot::Mutex;
 use psp_types::Notification;
 use serde_json::Value;
 
+use lapce_core::directory::Directory;
+
 use super::{
     PluginCatalogNotification, PluginCatalogRpcHandler,
     dap::{DapClient, DapRpcHandler, DebuggerData},
@@ -33,7 +35,7 @@ use super::{
     wasi::{load_all_volts, start_volt},
 };
 use crate::plugin::{
-    install_volt, psp::PluginHandlerNotification, wasi::enable_volt,
+    download_volt, install_volt, psp::PluginHandlerNotification, wasi::enable_volt,
 };
 
 pub struct PluginCatalog {
@@ -45,6 +47,87 @@ pub struct PluginCatalog {
     plugin_configurations: HashMap<String, HashMap<String, serde_json::Value>>,
     unactivated_volts: HashMap<VoltID, VoltMetadata>,
     open_files: HashMap<PathBuf, String>,
+}
+
+fn default_volt_infos() -> Vec<VoltInfo> {
+    // TranNhatHan/lapce-rust is preferred over dzhou121/lapce-rust because it downloads
+    // the latest rust-analyzer at startup instead of bundling a pinned binary, which avoids
+    // proc-macro API version mismatches against newer Rust toolchains.
+    vec![
+        VoltInfo {
+            author: "TranNhatHan".into(),
+            name: "lapce-rust".into(),
+            version: "0.4.24".into(),
+            display_name: "Rust".into(),
+            description: "Rust for Lapce: Powered by Rust Analyzer".into(),
+            repository: None,
+            wasm: true,
+            updated_at_ts: 0,
+        },
+        VoltInfo {
+            author: "panekj".into(),
+            name: "lapce-typescript".into(),
+            version: "2022.11.0".into(),
+            display_name: "TS / JS".into(),
+            description: "Typescript & Javascript language support".into(),
+            repository: None,
+            wasm: true,
+            updated_at_ts: 0,
+        },
+        VoltInfo {
+            author: "superlou".into(),
+            name: "lapce-python".into(),
+            version: "0.3.4".into(),
+            display_name: "Python".into(),
+            description: "Python for Lapce using python-lsp-server".into(),
+            repository: None,
+            wasm: true,
+            updated_at_ts: 0,
+        },
+        VoltInfo {
+            author: "panekj".into(),
+            name: "lapce-go".into(),
+            version: "2023.1.0".into(),
+            display_name: "Go (gopls)".into(),
+            description: "Go for Lapce using gopls".into(),
+            repository: None,
+            wasm: true,
+            updated_at_ts: 0,
+        },
+        VoltInfo {
+            author: "panekj".into(),
+            name: "lapce-cpp-clangd".into(),
+            version: "2024.2.0".into(),
+            display_name: "C/C++ (clangd)".into(),
+            description: "C/C++ language support".into(),
+            repository: None,
+            wasm: true,
+            updated_at_ts: 0,
+        },
+    ]
+}
+
+/// Download any default language plugins that are not yet present in the plugins directory.
+/// Checks each plugin individually so missing or deleted plugins are re-fetched on next launch.
+fn install_default_volts() {
+    let Some(plugins_dir) = Directory::plugins_directory() else {
+        return;
+    };
+
+    for volt in default_volt_infos() {
+        let plugin_dir = plugins_dir.join(format!("{}.{}", volt.author, volt.name));
+        if plugin_dir.exists() {
+            continue;
+        }
+        if let Err(err) = download_volt(&volt) {
+            tracing::warn!(
+                "Failed to download default plugin {}/{}: {:?}",
+                volt.author,
+                volt.name,
+                err
+            );
+        }
+    }
 }
 
 impl PluginCatalog {
@@ -67,6 +150,7 @@ impl PluginCatalog {
         };
 
         thread::spawn(move || {
+            install_default_volts();
             load_all_volts(plugin_rpc, &extra_plugin_paths, disabled_volts);
         });
 
