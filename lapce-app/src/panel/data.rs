@@ -334,6 +334,17 @@ impl PanelData {
         }
     }
 
+    pub fn set_bottom_maximized(&self, maximized: bool) {
+        self.styles.update(|styles| {
+            if let Some(style) = styles.get_mut(&PanelPosition::BottomLeft) {
+                style.maximized = maximized;
+            }
+            if let Some(style) = styles.get_mut(&PanelPosition::BottomRight) {
+                style.maximized = maximized;
+            }
+        });
+    }
+
     pub fn toggle_bottom_maximize(&self) {
         let maximized = !self.panel_bottom_maximized(false);
         self.styles.update(|styles| {

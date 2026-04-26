@@ -1572,6 +1572,7 @@ impl WindowTabData {
                 }
             }
             InternalCommand::OpenFile { path } => {
+                self.panel.set_bottom_maximized(false);
                 self.main_split.jump_to_location(
                     EditorLocation {
                         path,
@@ -1584,6 +1585,7 @@ impl WindowTabData {
                 );
             }
             InternalCommand::OpenAndConfirmedFile { path } => {
+                self.panel.set_bottom_maximized(false);
                 self.main_split.jump_to_location(
                     EditorLocation {
                         path,
@@ -1599,6 +1601,7 @@ impl WindowTabData {
                 }
             }
             InternalCommand::OpenFileInNewTab { path } => {
+                self.panel.set_bottom_maximized(false);
                 self.main_split.jump_to_location(
                     EditorLocation {
                         path,
@@ -1611,6 +1614,7 @@ impl WindowTabData {
                 );
             }
             InternalCommand::OpenFileChanges { path } => {
+                self.panel.set_bottom_maximized(false);
                 self.main_split.open_file_changes(path);
             }
             InternalCommand::ReloadFileExplorer => {
