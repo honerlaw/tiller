@@ -338,7 +338,7 @@ impl WindowTabData {
         );
         let (config, set_config) = cx.create_signal(Arc::new(config));
 
-        let focus = cx.create_rw_signal(Focus::Workbench);
+        let focus = cx.create_rw_signal(Focus::Panel(PanelKind::Terminal));
         let completion = cx.create_rw_signal(CompletionData::new(cx, config));
         let inline_completion = cx.create_rw_signal(InlineCompletionData::new(cx));
         let hover = HoverData::new(cx);

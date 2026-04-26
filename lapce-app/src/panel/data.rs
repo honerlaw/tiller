@@ -124,7 +124,7 @@ impl PanelData {
             PanelStyle {
                 active: 0,
                 shown: true,
-                maximized: false,
+                maximized: true,
             },
         );
         styles.insert(
