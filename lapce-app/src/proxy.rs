@@ -15,16 +15,10 @@ use lapce_rpc::{
 };
 use tracing::error;
 
-use self::{remote::start_remote, ssh::SshRemote};
 use crate::{
     terminal::event::TermEvent,
-    workspace::{LapceWorkspace, LapceWorkspaceType},
+    workspace::LapceWorkspace,
 };
-
-mod remote;
-mod ssh;
-#[cfg(windows)]
-mod wsl;
 
 pub struct Proxy {
     pub tx: Sender<CoreNotification>,
@@ -73,38 +67,11 @@ pub fn new_proxy(
                     1,
                 );
 
-                match &workspace.kind {
-                    LapceWorkspaceType::Local => {
-                        let core_rpc = core_rpc.clone();
-                        let proxy_rpc = proxy_rpc.clone();
-                        let mut dispatcher = Dispatcher::new(core_rpc, proxy_rpc);
-                        let proxy_rpc = dispatcher.proxy_rpc.clone();
-                        proxy_rpc.mainloop(&mut dispatcher);
-                    }
-                    LapceWorkspaceType::RemoteSSH(remote) => {
-                        if let Err(e) = start_remote(
-                            SshRemote {
-                                ssh: remote.clone(),
-                            },
-                            core_rpc.clone(),
-                            proxy_rpc.clone(),
-                        ) {
-                            error!("Failed to start SSH remote: {e}");
-                        }
-                    }
-                    #[cfg(windows)]
-                    LapceWorkspaceType::RemoteWSL(remote) => {
-                        if let Err(e) = start_remote(
-                            wsl::WslRemote {
-                                wsl: remote.clone(),
-                            },
-                            core_rpc.clone(),
-                            proxy_rpc.clone(),
-                        ) {
-                            error!("Failed to start SSH remote: {e}");
-                        }
-                    }
-                }
+                let dispatcher_core_rpc = core_rpc.clone();
+                let dispatcher_proxy_rpc = proxy_rpc.clone();
+                let mut dispatcher = Dispatcher::new(dispatcher_core_rpc, dispatcher_proxy_rpc);
+                let dispatcher_proxy_rpc = dispatcher.proxy_rpc.clone();
+                dispatcher_proxy_rpc.mainloop(&mut dispatcher);
                 core_rpc.notification(CoreNotification::ProxyStatus {
                     status: ProxyStatus::Disconnected,
                 });

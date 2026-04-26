@@ -12,9 +12,6 @@ pub enum PaletteKind {
     Reference,
     DocumentSymbol,
     WorkspaceSymbol,
-    SshHost,
-    #[cfg(windows)]
-    WslHost,
     RunAndDebug,
     ColorTheme,
     IconTheme,
@@ -40,7 +37,6 @@ impl PaletteKind {
             PaletteKind::TerminalProfile => "<",
             PaletteKind::File
             | PaletteKind::Reference
-            | PaletteKind::SshHost
             | PaletteKind::RunAndDebug
             | PaletteKind::ColorTheme
             | PaletteKind::IconTheme
@@ -49,8 +45,6 @@ impl PaletteKind {
             | PaletteKind::SCMReferences
             | PaletteKind::HelpAndFile
             | PaletteKind::DiffFiles => "",
-            #[cfg(windows)]
-            PaletteKind::WslHost => "",
         }
     }
 
@@ -86,9 +80,6 @@ impl PaletteKind {
                 Some(LapceWorkbenchCommand::PaletteHelpAndFile)
             }
             PaletteKind::Reference => None, // InternalCommand::PaletteReferences
-            PaletteKind::SshHost => Some(LapceWorkbenchCommand::ConnectSshHost),
-            #[cfg(windows)]
-            PaletteKind::WslHost => Some(LapceWorkbenchCommand::ConnectWslHost),
             PaletteKind::RunAndDebug => {
                 Some(LapceWorkbenchCommand::PaletteRunAndDebug)
             }
@@ -119,11 +110,8 @@ impl PaletteKind {
 
     pub fn get_input<'a>(&self, input: &'a str) -> &'a str {
         match self {
-            #[cfg(windows)]
-            PaletteKind::WslHost => input,
             PaletteKind::File
             | PaletteKind::Reference
-            | PaletteKind::SshHost
             | PaletteKind::RunAndDebug
             | PaletteKind::ColorTheme
             | PaletteKind::IconTheme

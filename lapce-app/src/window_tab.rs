@@ -732,63 +732,57 @@ impl WindowTabData {
 
             // ==== Files / Folders ====
             OpenFolder => {
-                if !self.workspace.kind.is_remote() {
-                    let window_command = self.common.window_common.window_command;
-                    let mut options = FileDialogOptions::new().title("Choose a folder").select_directories();
-                    options = if let Some(parent) = self.workspace.path.as_ref().and_then(|x| x.parent()) {
-                        options.force_starting_directory(parent)
-                    } else {
-                        options
-                    };
-                    open_file(options, move |file| {
-                        if let Some(mut file) = file {
-                            let workspace = LapceWorkspace {
-                                kind: LapceWorkspaceType::Local,
-                                path: Some(if let Some(path) = file.path.pop() {
-                                    path
-                                } else {
-                                    tracing::error!("No path");
-                                    return;
-                                }),
-                                last_open: std::time::SystemTime::now()
-                                    .duration_since(std::time::UNIX_EPOCH)
-                                    .unwrap()
-                                    .as_secs(),
-                            };
-                            window_command
-                                .send(WindowCommand::SetWorkspace { workspace });
-                        }
-                    });
-                }
+                let window_command = self.common.window_common.window_command;
+                let mut options = FileDialogOptions::new().title("Choose a folder").select_directories();
+                options = if let Some(parent) = self.workspace.path.as_ref().and_then(|x| x.parent()) {
+                    options.force_starting_directory(parent)
+                } else {
+                    options
+                };
+                open_file(options, move |file| {
+                    if let Some(mut file) = file {
+                        let workspace = LapceWorkspace {
+                            kind: LapceWorkspaceType::Local,
+                            path: Some(if let Some(path) = file.path.pop() {
+                                path
+                            } else {
+                                tracing::error!("No path");
+                                return;
+                            }),
+                            last_open: std::time::SystemTime::now()
+                                .duration_since(std::time::UNIX_EPOCH)
+                                .unwrap()
+                                .as_secs(),
+                        };
+                        window_command
+                            .send(WindowCommand::SetWorkspace { workspace });
+                    }
+                });
             }
             CloseFolder => {
-                if !self.workspace.kind.is_remote() {
-                    let window_command = self.common.window_common.window_command;
-                    let workspace = LapceWorkspace {
-                        kind: LapceWorkspaceType::Local,
-                        path: None,
-                        last_open: 0,
-                    };
-                    window_command.send(WindowCommand::SetWorkspace { workspace });
-                }
+                let window_command = self.common.window_common.window_command;
+                let workspace = LapceWorkspace {
+                    kind: LapceWorkspaceType::Local,
+                    path: None,
+                    last_open: 0,
+                };
+                window_command.send(WindowCommand::SetWorkspace { workspace });
             }
             OpenFile => {
-                if !self.workspace.kind.is_remote() {
-                    let internal_command = self.common.internal_command;
-                    let options = FileDialogOptions::new().title("Choose a file");
-                    open_file(options, move |file| {
-                        if let Some(mut file) = file {
-                            internal_command.send(InternalCommand::OpenFile {
-                                path: if let Some(path) = file.path.pop() {
-                                    path
-                                } else {
-                                    tracing::error!("No path");
-                                    return;
-                                },
-                            })
-                        }
-                    });
-                }
+                let internal_command = self.common.internal_command;
+                let options = FileDialogOptions::new().title("Choose a file");
+                open_file(options, move |file| {
+                    if let Some(mut file) = file {
+                        internal_command.send(InternalCommand::OpenFile {
+                            path: if let Some(path) = file.path.pop() {
+                                path
+                            } else {
+                                tracing::error!("No path");
+                                return;
+                            },
+                        })
+                    }
+                });
             }
             NewFile => {
                 self.main_split.new_file();
@@ -1080,26 +1074,6 @@ impl WindowTabData {
                     self.panel.show_panel(&PanelKind::Terminal);
                 }
                 self.common.focus.set(Focus::Panel(PanelKind::Terminal));
-            }
-
-            // ==== Remote ====
-            ConnectSshHost => {
-                self.palette.run(PaletteKind::SshHost);
-            }
-            #[cfg(windows)]
-            ConnectWslHost => {
-                self.palette.run(PaletteKind::WslHost);
-            }
-            DisconnectRemote => {
-                self.common.window_common.window_command.send(
-                    WindowCommand::SetWorkspace {
-                        workspace: LapceWorkspace {
-                            kind: LapceWorkspaceType::Local,
-                            path: None,
-                            last_open: 0,
-                        },
-                    },
-                );
             }
 
             // ==== Palette Commands ====

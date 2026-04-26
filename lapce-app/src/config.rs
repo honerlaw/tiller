@@ -224,9 +224,6 @@ impl LapceConfig {
                         .unwrap_or_else(|_| config.clone());
                 }
             }
-            LapceWorkspaceType::RemoteSSH(_) => {}
-            #[cfg(windows)]
-            LapceWorkspaceType::RemoteWSL(_) => {}
         }
 
         config

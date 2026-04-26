@@ -552,27 +552,24 @@ impl FileExplorerData {
 
         menu = menu.separator();
 
-        // TODO: there are situations where we can open the file explorer to remote files
-        if !common.workspace.kind.is_remote() {
-            let path = path_a.clone();
-            #[cfg(not(target_os = "macos"))]
-            let title = "Reveal in system file explorer";
-            #[cfg(target_os = "macos")]
-            let title = "Reveal in Finder";
-            menu = menu.entry(MenuItem::new(title).action(move || {
-                let path = path.parent().unwrap_or(&path);
-                if !path.exists() {
-                    return;
-                }
+        let path = path_a.clone();
+        #[cfg(not(target_os = "macos"))]
+        let title = "Reveal in system file explorer";
+        #[cfg(target_os = "macos")]
+        let title = "Reveal in Finder";
+        menu = menu.entry(MenuItem::new(title).action(move || {
+            let path = path.parent().unwrap_or(&path);
+            if !path.exists() {
+                return;
+            }
 
-                if let Err(err) = open::that(path) {
-                    tracing::error!(
-                        "Failed to reveal file in system file explorer: {}",
-                        err
-                    );
-                }
-            }));
-        }
+            if let Err(err) = open::that(path) {
+                tracing::error!(
+                    "Failed to reveal file in system file explorer: {}",
+                    err
+                );
+            }
+        }));
 
         if !is_workspace {
             let path = path_a.clone();
