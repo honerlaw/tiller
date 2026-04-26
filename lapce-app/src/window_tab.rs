@@ -636,6 +636,16 @@ impl WindowTabData {
             });
         }
 
+        {
+            let panel = window_tab_data.panel.clone();
+            let editor_tabs = window_tab_data.main_split.editor_tabs;
+            cx.create_effect(move |_| {
+                if editor_tabs.with(|tabs| tabs.is_empty()) {
+                    panel.set_bottom_maximized(true);
+                }
+            });
+        }
+
         window_tab_data
     }
 
