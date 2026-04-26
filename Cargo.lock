@@ -2989,14 +2989,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "lapce"
-version = "0.4.6"
-dependencies = [
- "lapce-app",
- "lapce-proxy",
-]
-
-[[package]]
 name = "lapce-app"
 version = "0.4.6"
 dependencies = [
@@ -5554,6 +5546,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5516c27b78311c50bf42c071425c560ac799b11c30b31f87e3081965fe5e0180"
 dependencies = [
  "once_cell",
+]
+
+[[package]]
+name = "tiller"
+version = "0.4.6"
+dependencies = [
+ "lapce-app",
+ "lapce-proxy",
 ]
 
 [[package]]
