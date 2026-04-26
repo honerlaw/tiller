@@ -30,7 +30,7 @@ use lapce_rpc::{
         ProxyHandler, ProxyNotification, ProxyRequest, ProxyResponse,
         ProxyRpcHandler, SearchMatch,
     },
-    source_control::{DiffInfo, FileDiff},
+    source_control::{DiffInfo, FileDiff, WorktreeInfo},
     style::{LineStyle, SemanticStyles},
     terminal::TermId,
 };
@@ -386,6 +386,20 @@ impl ProxyHandler for Dispatcher {
                     }
                 }
             }
+            GitCreateWorktree { name, path, branch } => {
+                if let Some(workspace) = self.workspace.as_ref() {
+                    if let Err(e) = git_create_worktree(workspace, &name, &path, &branch) {
+                        eprintln!("{e:?}");
+                    }
+                }
+            }
+            GitRemoveWorktree { name } => {
+                if let Some(workspace) = self.workspace.as_ref() {
+                    if let Err(e) = git_remove_worktree(workspace, &name) {
+                        eprintln!("{e:?}");
+                    }
+                }
+            }
             LspCancel { id } => {
                 self.catalog_rpc.send_notification(
                     None,
@@ -541,6 +555,17 @@ impl ProxyHandler for Dispatcher {
                         Err(e) => eprintln!("{e:?}"),
                     }
                 }
+            }
+            GitListWorktrees {} => {
+                let worktrees = self
+                    .workspace
+                    .as_deref()
+                    .and_then(|w| git_list_worktrees(w).ok())
+                    .unwrap_or_default();
+                self.proxy_rpc.handle_response(
+                    id,
+                    Ok(ProxyResponse::GitListWorktreesResponse { worktrees }),
+                );
             }
             GetDefinition {
                 request_id,
@@ -1758,4 +1783,80 @@ fn search_in_path(
     }
 
     Ok(ProxyResponse::GlobalSearchResponse { matches })
+}
+
+fn git_list_worktrees(workspace_path: &Path) -> Result<Vec<WorktreeInfo>> {
+    let repo = Repository::discover(workspace_path)?;
+    let worktree_names = repo.worktrees()?;
+    let main_path = repo.workdir().map(|p| p.to_path_buf());
+
+    let mut result = Vec::new();
+
+    // Include the main worktree
+    if let Some(ref path) = main_path {
+        let branch = repo
+            .head()
+            .ok()
+            .and_then(|h| h.shorthand().map(|s| s.to_owned()));
+        result.push(WorktreeInfo {
+            name: "main".to_owned(),
+            path: path.clone(),
+            branch,
+            is_main: true,
+        });
+    }
+
+    for name_opt in worktree_names.iter() {
+        if let Some(name) = name_opt {
+            if let Ok(wt) = repo.find_worktree(name) {
+                if let Ok(wt_repo) = git2::Repository::open(wt.path()) {
+                    let branch = wt_repo
+                        .head()
+                        .ok()
+                        .and_then(|h| h.shorthand().map(|s| s.to_owned()));
+                    result.push(WorktreeInfo {
+                        name: name.to_owned(),
+                        path: wt.path().to_path_buf(),
+                        branch,
+                        is_main: false,
+                    });
+                }
+            }
+        }
+    }
+
+    Ok(result)
+}
+
+fn git_create_worktree(
+    workspace_path: &Path,
+    name: &str,
+    path: &Path,
+    branch: &str,
+) -> Result<()> {
+    let repo = Repository::discover(workspace_path)?;
+    let mut opts = git2::WorktreeAddOptions::new();
+    // Try to find an existing branch to check out into the new worktree
+    if let Ok(reference) = repo.find_branch(branch, git2::BranchType::Local) {
+        opts.reference(Some(reference.get()));
+        repo.worktree(name, path, Some(&opts))?;
+    } else {
+        // Branch doesn't exist: create worktree and then create the branch inside it
+        repo.worktree(name, path, None)?;
+        let wt_repo = git2::Repository::open(path)?;
+        let head = wt_repo.head()?;
+        let commit = head.peel_to_commit()?;
+        wt_repo.branch(branch, &commit, false)?;
+        wt_repo.set_head(&format!("refs/heads/{branch}"))?;
+    }
+    Ok(())
+}
+
+fn git_remove_worktree(workspace_path: &Path, name: &str) -> Result<()> {
+    let repo = Repository::discover(workspace_path)?;
+    let wt = repo.find_worktree(name)?;
+    let mut prune_opts = git2::WorktreePruneOptions::new();
+    prune_opts.working_tree(true);
+    wt.prune(Some(&mut prune_opts))?;
+    Ok(())
 }
