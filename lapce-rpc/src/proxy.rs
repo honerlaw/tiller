@@ -29,7 +29,7 @@ use crate::{
     file::{FileNodeItem, PathObject},
     file_line::FileLine,
     plugin::{PluginId, VoltInfo, VoltMetadata},
-    source_control::FileDiff,
+    source_control::{FileDiff, WorktreeInfo},
     style::SemanticStyles,
     terminal::{TermId, TerminalProfile},
 };
@@ -220,6 +220,7 @@ pub enum ProxyRequest {
     ReferencesResolve {
         items: Vec<Location>,
     },
+    GitListWorktrees {},
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -292,6 +293,14 @@ pub enum ProxyNotification {
     },
     GitDiscardWorkspaceChanges {},
     GitInit {},
+    GitCreateWorktree {
+        name: String,
+        path: PathBuf,
+        branch: String,
+    },
+    GitRemoveWorktree {
+        name: String,
+    },
     LspCancel {
         id: i32,
     },
@@ -463,6 +472,9 @@ pub enum ProxyResponse {
     CreatePathResponse {
         path: PathBuf,
     },
+    GitListWorktreesResponse {
+        worktrees: Vec<WorktreeInfo>,
+    },
     Success {},
     SaveResponse {},
     ReferencesResolveResponse {
@@ -607,6 +619,25 @@ impl ProxyRpcHandler {
 
     pub fn git_checkout(&self, reference: String) {
         self.notification(ProxyNotification::GitCheckout { reference });
+    }
+
+    pub fn git_list_worktrees(
+        &self,
+        f: impl ProxyCallback + 'static,
+    ) {
+        self.request_async(ProxyRequest::GitListWorktrees {}, f);
+    }
+
+    pub fn git_create_worktree(&self, name: String, path: PathBuf, branch: String) {
+        self.notification(ProxyNotification::GitCreateWorktree {
+            name,
+            path,
+            branch,
+        });
+    }
+
+    pub fn git_remove_worktree(&self, name: String) {
+        self.notification(ProxyNotification::GitRemoveWorktree { name });
     }
 
     pub fn install_volt(&self, volt: VoltInfo) {

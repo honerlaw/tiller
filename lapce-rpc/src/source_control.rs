@@ -2,6 +2,14 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct WorktreeInfo {
+    pub name: String,
+    pub path: PathBuf,
+    pub branch: Option<String>,
+    pub is_main: bool,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct DiffInfo {
     pub head: String,
