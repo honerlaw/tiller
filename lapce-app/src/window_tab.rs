@@ -1313,6 +1313,7 @@ impl WindowTabData {
                                 .git_discard_files_changes(vec![old_path]);
                             self.common.proxy.trash_path(new_path, Box::new(|_| {}));
                         }
+                        FileDiff::Ignored(_) => {}
                     }
                 }
             }

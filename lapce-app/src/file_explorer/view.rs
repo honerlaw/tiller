@@ -134,9 +134,13 @@ fn file_node_text_color(
         };
 
         if node.is_dir {
+            // A directory gets a color only if a non-ignored child is modified/added/deleted.
             file_diffs
-                .keys()
-                .find(|p| p.as_path().starts_with(path))
+                .iter()
+                .find(|(p, (d, _))| {
+                    p.as_path().starts_with(path)
+                        && d.kind() != FileDiffKind::Ignored
+                })
                 .map(|_| FileDiffKind::Modified)
         } else {
             file_diffs.get(path).map(|(diff, _)| diff.kind())
@@ -149,6 +153,7 @@ fn file_node_text_color(
         }
         Some(FileDiffKind::Added) => LapceColor::SOURCE_CONTROL_ADDED,
         Some(FileDiffKind::Deleted) => LapceColor::SOURCE_CONTROL_REMOVED,
+        Some(FileDiffKind::Ignored) => LapceColor::PANEL_FOREGROUND_DIM,
         None => LapceColor::PANEL_FOREGROUND,
     };
 

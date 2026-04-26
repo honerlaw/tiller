@@ -16,7 +16,7 @@ use floem::{
     },
 };
 use lapce_core::buffer::rope_text::RopeText;
-use lapce_rpc::source_control::FileDiff;
+use lapce_rpc::source_control::{FileDiff, FileDiffKind};
 
 use super::{
     data::PanelSection, kind::PanelKind, position::PanelPosition,
@@ -278,7 +278,9 @@ fn file_diffs_view(source_control: SourceControlData) -> impl View {
                         FileDiff::Modified(_) => LapceIcons::SCM_DIFF_MODIFIED,
                         FileDiff::Added(_) => LapceIcons::SCM_DIFF_ADDED,
                         FileDiff::Deleted(_) => LapceIcons::SCM_DIFF_REMOVED,
-                        FileDiff::Renamed(_, _) => LapceIcons::SCM_DIFF_RENAMED,
+                        FileDiff::Renamed(_, _) | FileDiff::Ignored(_) => {
+                            LapceIcons::SCM_DIFF_RENAMED
+                        }
                     };
                     config.get().ui_svg(svg)
                 })
@@ -292,6 +294,7 @@ fn file_diffs_view(source_control: SourceControlData) -> impl View {
                         FileDiff::Renamed(_, _) => {
                             LapceColor::SOURCE_CONTROL_MODIFIED
                         }
+                        FileDiff::Ignored(_) => LapceColor::PANEL_FOREGROUND_DIM,
                     };
                     let color = config.color(color);
                     s.min_width(size).size(size, size).color(color)
@@ -347,7 +350,13 @@ fn file_diffs_view(source_control: SourceControlData) -> impl View {
     container({
         scroll({
             dyn_stack(
-                move || file_diffs.get(),
+                move || {
+                    file_diffs
+                        .get()
+                        .into_iter()
+                        .filter(|(_, (d, _))| d.kind() != FileDiffKind::Ignored)
+                        .collect::<Vec<_>>()
+                },
                 |(path, (diff, checked))| {
                     (path.to_path_buf(), diff.clone(), *checked)
                 },

@@ -1439,6 +1439,7 @@ fn git_commit(
             FileDiff::Deleted(p) => {
                 index.remove_path(p.strip_prefix(workspace_path)?)?;
             }
+            FileDiff::Ignored(_) => {}
         }
     }
     index.write()?;
@@ -1635,11 +1636,26 @@ fn git_diff_new(workspace_path: &Path) -> Option<DiffInfo> {
         };
         file_diffs.push(diff);
     }
+    // Collect git-ignored files visible in the working tree so the file
+    // explorer can dim them.
+    let mut ignored_opts = DiffOptions::new();
+    ignored_opts.include_ignored(true).recurse_ignored_dirs(true);
+    if let Ok(ignored_diff) = repo.diff_index_to_workdir(None, Some(&mut ignored_opts)) {
+        for delta in ignored_diff.deltas() {
+            if delta.status() == git2::Delta::Ignored {
+                if let Some(path) = delta.new_file().path() {
+                    file_diffs.push(FileDiff::Ignored(workspace_path.join(path)));
+                }
+            }
+        }
+    }
+
     file_diffs.sort_by_key(|d| match d {
         FileDiff::Modified(p)
         | FileDiff::Added(p)
         | FileDiff::Renamed(p, _)
-        | FileDiff::Deleted(p) => p.clone(),
+        | FileDiff::Deleted(p)
+        | FileDiff::Ignored(p) => p.clone(),
     });
     Some(DiffInfo {
         head: name,

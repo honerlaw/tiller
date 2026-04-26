@@ -24,6 +24,7 @@ pub enum FileDiff {
     Added(PathBuf),
     Deleted(PathBuf),
     Renamed(PathBuf, PathBuf),
+    Ignored(PathBuf),
 }
 
 impl FileDiff {
@@ -32,7 +33,8 @@ impl FileDiff {
             FileDiff::Modified(p)
             | FileDiff::Added(p)
             | FileDiff::Deleted(p)
-            | FileDiff::Renamed(_, p) => p,
+            | FileDiff::Renamed(_, p)
+            | FileDiff::Ignored(p) => p,
         }
     }
 
@@ -42,6 +44,7 @@ impl FileDiff {
             FileDiff::Added(_) => FileDiffKind::Added,
             FileDiff::Deleted(_) => FileDiffKind::Deleted,
             FileDiff::Renamed(_, _) => FileDiffKind::Renamed,
+            FileDiff::Ignored(_) => FileDiffKind::Ignored,
         }
     }
 }
@@ -52,4 +55,5 @@ pub enum FileDiffKind {
     Added,
     Deleted,
     Renamed,
+    Ignored,
 }
