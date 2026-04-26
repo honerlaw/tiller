@@ -293,8 +293,12 @@ key = "meta+shift+o"
 command = "palette.symbol"
 
 [[keymaps]]
-key = "meta+t"
+key = "meta+shift+t"
 command = "palette.workspace_symbol"
+
+[[keymaps]]
+key = "meta+t"
+command = "new_terminal_tab"
 
 [[keymaps]]
 key = "ctrl+g"
