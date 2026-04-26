@@ -134,7 +134,14 @@ fn file_node_text_color(
         };
 
         if node.is_dir {
-            // A directory gets a color only if a non-ignored child is modified/added/deleted.
+            // Dim if the directory itself is ignored.
+            if file_diffs
+                .get(path)
+                .is_some_and(|(d, _)| d.kind() == FileDiffKind::Ignored)
+            {
+                return Some(FileDiffKind::Ignored);
+            }
+            // Otherwise highlight if any non-ignored child is modified/added/deleted.
             file_diffs
                 .iter()
                 .find(|(p, (d, _))| {

@@ -1639,7 +1639,7 @@ fn git_diff_new(workspace_path: &Path) -> Option<DiffInfo> {
     // Collect git-ignored files visible in the working tree so the file
     // explorer can dim them.
     let mut ignored_opts = DiffOptions::new();
-    ignored_opts.include_ignored(true).recurse_ignored_dirs(true);
+    ignored_opts.include_ignored(true).recurse_ignored_dirs(false);
     if let Ok(ignored_diff) = repo.diff_index_to_workdir(None, Some(&mut ignored_opts)) {
         for delta in ignored_diff.deltas() {
             if delta.status() == git2::Delta::Ignored {
