@@ -2165,6 +2165,35 @@ impl WindowTabData {
             CoreNotification::TerminalLaunchFailed { term_id, error } => {
                 self.terminal.launch_failed(term_id, error);
             }
+            CoreNotification::TerminalCwd { term_id: _, path } => {
+                // Walk up from the reported CWD to find a .git root.
+                let mut candidate = path.as_path();
+                loop {
+                    if candidate.join(".git").exists() {
+                        let git_root = candidate.to_path_buf();
+                        let current = self.workspace.path.as_deref();
+                        if current != Some(&git_root) {
+                            let workspace = LapceWorkspace {
+                                kind: LapceWorkspaceType::Local,
+                                path: Some(git_root),
+                                last_open: std::time::SystemTime::now()
+                                    .duration_since(std::time::UNIX_EPOCH)
+                                    .unwrap_or_default()
+                                    .as_secs(),
+                            };
+                            self.common
+                                .window_common
+                                .window_command
+                                .send(WindowCommand::SetWorkspace { workspace });
+                        }
+                        break;
+                    }
+                    match candidate.parent() {
+                        Some(p) => candidate = p,
+                        None => break,
+                    }
+                }
+            }
             CoreNotification::RunInTerminal { config } => {
                 self.run_in_terminal(cx, &RunDebugMode::Debug, config, true);
             }

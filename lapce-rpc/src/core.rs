@@ -112,6 +112,10 @@ pub enum CoreNotification {
         term_id: TermId,
         content: Vec<u8>,
     },
+    TerminalCwd {
+        term_id: TermId,
+        path: PathBuf,
+    },
     TerminalLaunchFailed {
         term_id: TermId,
         error: String,
@@ -365,6 +369,10 @@ impl CoreRpcHandler {
 
     pub fn update_terminal(&self, term_id: TermId, content: Vec<u8>) {
         self.notification(CoreNotification::UpdateTerminal { term_id, content });
+    }
+
+    pub fn terminal_cwd(&self, term_id: TermId, path: PathBuf) {
+        self.notification(CoreNotification::TerminalCwd { term_id, path });
     }
 
     pub fn dap_stopped(

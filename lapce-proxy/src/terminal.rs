@@ -231,6 +231,9 @@ impl Terminal {
             match self.pty.reader().read(buf) {
                 Ok(0) => break,
                 Ok(n) => {
+                    if let Some(path) = scan_osc7(&buf[..n]) {
+                        core_rpc.terminal_cwd(self.term_id, path);
+                    }
                     core_rpc.update_terminal(self.term_id, buf[..n].to_vec());
                 }
                 Err(err) => match err.kind() {
@@ -371,6 +374,57 @@ impl State {
     fn set_current(&mut self, new: Option<Writing>) {
         self.writing = new;
     }
+}
+
+/// Scan a PTY output buffer for an OSC 7 "current working directory" sequence.
+///
+/// Shells emit `ESC ] 7 ; file://hostname/path BEL` (or `ESC \` as terminator)
+/// after each directory change. Returns the decoded path if one is found in this chunk.
+fn scan_osc7(buf: &[u8]) -> Option<PathBuf> {
+    // OSC 7 prefix: ESC ] 7 ; f i l e : / /
+    const PREFIX: &[u8] = b"\x1b]7;file://";
+    let start = buf.windows(PREFIX.len()).position(|w| w == PREFIX)?;
+    let after_prefix = start + PREFIX.len();
+
+    // Find the terminator: BEL (0x07) or ESC \ (0x1b 0x5c)
+    let rest = &buf[after_prefix..];
+    let end = rest
+        .windows(2)
+        .position(|w| w == b"\x1b\\")
+        .or_else(|| rest.iter().position(|&b| b == 0x07))?;
+
+    // The URL is: hostname/path — everything after "file://"
+    // Skip past the hostname (up to the first '/') to get the path.
+    let url_tail = std::str::from_utf8(&rest[..end]).ok()?;
+    let path_str = if let Some(slash) = url_tail.find('/') {
+        &url_tail[slash..]
+    } else {
+        return None;
+    };
+
+    // URL-decode percent-encoded characters (e.g. spaces as %20)
+    let decoded = percent_decode(path_str.as_bytes());
+    Some(PathBuf::from(decoded))
+}
+
+/// Minimal percent-decoding for file paths (ASCII only).
+fn percent_decode(input: &[u8]) -> String {
+    let mut out = String::with_capacity(input.len());
+    let mut i = 0;
+    while i < input.len() {
+        if input[i] == b'%' && i + 2 < input.len() {
+            if let Ok(s) = std::str::from_utf8(&input[i + 1..i + 3]) {
+                if let Ok(byte) = u8::from_str_radix(s, 16) {
+                    out.push(byte as char);
+                    i += 3;
+                    continue;
+                }
+            }
+        }
+        out.push(input[i] as char);
+        i += 1;
+    }
+    out
 }
 
 #[cfg(target_os = "macos")]
