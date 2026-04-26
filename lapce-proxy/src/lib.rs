@@ -133,8 +133,46 @@ pub fn mainloop() {
     if let Err(err) = register_lapce_path() {
         tracing::error!("{:?}", err);
     }
+    register_server_paths();
 
     proxy_rpc.mainloop(&mut dispatcher);
+}
+
+/// Add bundled server binary directories to PATH so WASM plugins can find them by name.
+/// WASM plugins inherit the proxy process environment and call `startLspServer` with URNs
+/// like `urn:typescript-language-server` — which resolves via PATH, not via `volt.serverPath`.
+fn register_server_paths() {
+    let Some(servers_dir) = lapce_core::directory::Directory::data_local_directory()
+        .map(|d| d.join("servers"))
+    else {
+        return;
+    };
+
+    let candidates = [
+        servers_dir.join("typescript-ls"),
+        servers_dir.join("pyright"),
+    ];
+
+    let current = std::env::var("PATH").unwrap_or_default();
+    let existing: std::collections::HashSet<std::path::PathBuf> =
+        std::env::split_paths(&current).collect();
+
+    let to_add: Vec<std::path::PathBuf> = candidates
+        .into_iter()
+        .filter(|p| p.exists() && !existing.contains(p))
+        .collect();
+
+    if to_add.is_empty() {
+        return;
+    }
+
+    if let Ok(new_path) =
+        std::env::join_paths(to_add.into_iter().chain(std::env::split_paths(&current)))
+    {
+        unsafe {
+            std::env::set_var("PATH", new_path);
+        }
+    }
 }
 
 pub fn register_lapce_path() -> Result<()> {
