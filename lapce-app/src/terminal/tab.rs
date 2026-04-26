@@ -1,6 +1,6 @@
 use std::{path::PathBuf, rc::Rc, sync::Arc};
 
-use floem::reactive::{RwSignal, Scope, SignalGet, SignalWith};
+use floem::reactive::{RwSignal, Scope, SignalGet, SignalUpdate, SignalWith};
 use lapce_rpc::terminal::TerminalProfile;
 
 use super::data::TerminalData;
@@ -15,8 +15,10 @@ pub struct TerminalTabData {
     pub terminal_tab_id: TerminalTabId,
     pub active: RwSignal<usize>,
     pub terminals: RwSignal<im::Vector<(RwSignal<usize>, TerminalData)>>,
-    /// The worktree this tab is bound to, if any.
+    /// The worktree this tab was created for, if any.
     pub worktree_path: Option<PathBuf>,
+    /// The git root most recently reported by the active terminal in this tab via OSC 7.
+    pub current_git_root: RwSignal<Option<PathBuf>>,
 }
 
 impl TerminalTabData {
@@ -43,12 +45,14 @@ impl TerminalTabData {
         let terminals = cx.create_rw_signal(terminals);
         let active = cx.create_rw_signal(0);
         let terminal_tab_id = TerminalTabId::next();
+        let current_git_root = cx.create_rw_signal(worktree_path.clone());
         Self {
             scope: cx,
             terminal_tab_id,
             active,
             terminals,
             worktree_path,
+            current_git_root,
         }
     }
 

@@ -628,10 +628,23 @@ impl WindowTabData {
 
         {
             let proxy = window_tab_data.common.proxy.clone();
+            let window_command = window_tab_data.common.window_common.window_command;
+            let current_workspace_path = window_tab_data.workspace.path.clone();
             let active_worktree = window_tab_data.terminal.active_worktree_path;
             cx.create_effect(move |_| {
                 if let Some(path) = active_worktree.get() {
-                    proxy.refresh_diff(path);
+                    proxy.refresh_diff(path.clone());
+                    if current_workspace_path.as_deref() != Some(path.as_path()) {
+                        let workspace = LapceWorkspace {
+                            kind: LapceWorkspaceType::Local,
+                            path: Some(path),
+                            last_open: std::time::SystemTime::now()
+                                .duration_since(std::time::UNIX_EPOCH)
+                                .unwrap_or_default()
+                                .as_secs(),
+                        };
+                        window_command.send(WindowCommand::SetWorkspace { workspace });
+                    }
                 }
             });
         }
@@ -2171,36 +2184,23 @@ impl WindowTabData {
                     .tab_info
                     .with_untracked(|info| info.tabs.is_empty())
                 {
-                    if self.panel.is_panel_visible(&PanelKind::Terminal) {
-                        self.panel.hide_panel(&PanelKind::Terminal);
-                    }
-                    self.common.focus.set(Focus::Workbench);
+                    self.terminal.new_tab(None);
+                    self.panel.set_bottom_maximized(true);
+                    self.common.focus.set(Focus::Panel(PanelKind::Terminal));
                 }
             }
             CoreNotification::TerminalLaunchFailed { term_id, error } => {
                 self.terminal.launch_failed(term_id, error);
             }
-            CoreNotification::TerminalCwd { term_id: _, path } => {
-                // Walk up from the reported CWD to find a .git root.
+            CoreNotification::TerminalCwd { term_id, path } => {
+                // Walk up from the reported CWD to find the nearest .git root and
+                // store it on the tab. The active_worktree effect handles the
+                // workspace update so only the focused terminal drives the switch.
                 let mut candidate = path.as_path();
                 loop {
                     if candidate.join(".git").exists() {
-                        let git_root = candidate.to_path_buf();
-                        let current = self.workspace.path.as_deref();
-                        if current != Some(&git_root) {
-                            let workspace = LapceWorkspace {
-                                kind: LapceWorkspaceType::Local,
-                                path: Some(git_root),
-                                last_open: std::time::SystemTime::now()
-                                    .duration_since(std::time::UNIX_EPOCH)
-                                    .unwrap_or_default()
-                                    .as_secs(),
-                            };
-                            self.common
-                                .window_common
-                                .window_command
-                                .send(WindowCommand::SetWorkspace { workspace });
-                        }
+                        self.terminal
+                            .set_terminal_git_root(term_id, candidate.to_path_buf());
                         break;
                     }
                     match candidate.parent() {

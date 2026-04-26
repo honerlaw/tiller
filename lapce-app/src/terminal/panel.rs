@@ -111,7 +111,7 @@ impl TerminalPanelData {
                 info.tabs
                     .get(info.active)
                     .or_else(|| info.tabs.last())
-                    .and_then(|(_, tab)| tab.worktree_path.clone())
+                    .and_then(|(_, tab)| tab.current_git_root.get())
             })
         });
 
@@ -305,6 +305,20 @@ impl TerminalPanelData {
         if let Some(t) = self.get_terminal(term_id) {
             t.title.set(title.to_string());
         }
+    }
+
+    pub fn set_terminal_git_root(&self, term_id: &TermId, git_root: PathBuf) {
+        self.tab_info.with_untracked(|info| {
+            for (_, tab) in &info.tabs {
+                let has_term = tab.terminals.with_untracked(|terminals| {
+                    terminals.iter().any(|(_, t)| &t.term_id == term_id)
+                });
+                if has_term {
+                    tab.current_git_root.set(Some(git_root.clone()));
+                    break;
+                }
+            }
+        });
     }
 
     pub fn get_terminal(&self, term_id: &TermId) -> Option<TerminalData> {
