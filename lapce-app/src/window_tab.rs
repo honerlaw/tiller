@@ -628,22 +628,14 @@ impl WindowTabData {
 
         {
             let proxy = window_tab_data.common.proxy.clone();
-            let window_command = window_tab_data.common.window_common.window_command;
-            let current_workspace_path = window_tab_data.workspace.path.clone();
+            let file_explorer = window_tab_data.file_explorer.clone();
             let active_worktree = window_tab_data.terminal.active_worktree_path;
             cx.create_effect(move |_| {
                 if let Some(path) = active_worktree.get() {
                     proxy.refresh_diff(path.clone());
-                    if current_workspace_path.as_deref() != Some(path.as_path()) {
-                        let workspace = LapceWorkspace {
-                            kind: LapceWorkspaceType::Local,
-                            path: Some(path),
-                            last_open: std::time::SystemTime::now()
-                                .duration_since(std::time::UNIX_EPOCH)
-                                .unwrap_or_default()
-                                .as_secs(),
-                        };
-                        window_command.send(WindowCommand::SetWorkspace { workspace });
+                    let current = file_explorer.root.with_untracked(|r| r.path.clone());
+                    if current != path {
+                        file_explorer.set_root(path);
                     }
                 }
             });

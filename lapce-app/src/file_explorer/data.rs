@@ -146,11 +146,24 @@ impl FileExplorerData {
         data
     }
 
-    /// Reload the file explorer data via reading the root directory.  
+    /// Reload the file explorer data via reading the root directory.
     /// Note that this will not update immediately.
     pub fn reload(&self) {
         let path = self.root.with_untracked(|root| root.path.clone());
         self.read_dir(&path);
+    }
+
+    /// Change the root directory without recreating the workspace.
+    pub fn set_root(&self, path: PathBuf) {
+        self.root.set(FileNodeItem {
+            path: path.clone(),
+            is_dir: true,
+            read: false,
+            open: false,
+            children: HashMap::new(),
+            children_open_count: 0,
+        });
+        self.toggle_expand(&path);
     }
 
     /// Toggle whether the directory is expanded or not.  
