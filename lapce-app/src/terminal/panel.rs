@@ -171,7 +171,34 @@ impl TerminalPanelData {
         self.new_tab_run_debug(None, profile);
     }
 
-    /// Create a new terminal tab with the given run debug process.  
+    /// Create a new terminal tab bound to a specific worktree directory.
+    pub fn new_tab_worktree(&self, path: PathBuf, name: String) {
+        let mut profile = TerminalProfile::default();
+        profile.name = name;
+        profile.workdir = url::Url::from_file_path(&path).ok();
+        let terminal_tab = TerminalTabData::new_run_debug(
+            self.workspace.clone(),
+            None,
+            Some(profile),
+            Some(path),
+            self.common.clone(),
+        );
+
+        self.tab_info.update(|info| {
+            info.tabs.insert(
+                if info.tabs.is_empty() {
+                    0
+                } else {
+                    (info.active + 1).min(info.tabs.len())
+                },
+                (terminal_tab.scope.create_rw_signal(0), terminal_tab),
+            );
+            let new_active = (info.active + 1).min(info.tabs.len() - 1);
+            info.active = new_active;
+        });
+    }
+
+    /// Create a new terminal tab with the given run debug process.
     /// Errors if expanding out the run debug process failed.
     pub fn new_tab_run_debug(
         &self,
@@ -182,6 +209,7 @@ impl TerminalPanelData {
             self.workspace.clone(),
             run_debug,
             profile,
+            None,
             self.common.clone(),
         );
 

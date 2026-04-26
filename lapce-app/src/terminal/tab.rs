@@ -1,4 +1,4 @@
-use std::{rc::Rc, sync::Arc};
+use std::{path::PathBuf, rc::Rc, sync::Arc};
 
 use floem::reactive::{RwSignal, Scope, SignalGet, SignalWith};
 use lapce_rpc::terminal::TerminalProfile;
@@ -15,6 +15,8 @@ pub struct TerminalTabData {
     pub terminal_tab_id: TerminalTabId,
     pub active: RwSignal<usize>,
     pub terminals: RwSignal<im::Vector<(RwSignal<usize>, TerminalData)>>,
+    /// The worktree this tab is bound to, if any.
+    pub worktree_path: Option<PathBuf>,
 }
 
 impl TerminalTabData {
@@ -23,14 +25,15 @@ impl TerminalTabData {
         profile: Option<TerminalProfile>,
         common: Rc<CommonData>,
     ) -> Self {
-        TerminalTabData::new_run_debug(workspace, None, profile, common)
+        TerminalTabData::new_run_debug(workspace, None, profile, None, common)
     }
 
-    /// Create the information for a terminal tab, which can contain multiple terminals.  
+    /// Create the information for a terminal tab, which can contain multiple terminals.
     pub fn new_run_debug(
         workspace: Arc<LapceWorkspace>,
         run_debug: Option<RunDebugProcess>,
         profile: Option<TerminalProfile>,
+        worktree_path: Option<PathBuf>,
         common: Rc<CommonData>,
     ) -> Self {
         let cx = common.scope.create_child();
@@ -45,6 +48,7 @@ impl TerminalTabData {
             terminal_tab_id,
             active,
             terminals,
+            worktree_path,
         }
     }
 
